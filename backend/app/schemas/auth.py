@@ -48,10 +48,6 @@ class LoginResponse(BaseModel):
     user: UserOut
 
 
-class GoogleAuthRequest(BaseModel):
-    credential: str
-
-
 class FirebaseAuthRequest(BaseModel):
     token: str
     full_name: str | None = None

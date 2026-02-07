@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -38,12 +37,9 @@ import OrderDetailPage from '../portal/OrderDetailPage';
 import PortalInvoicePage from '../portal/PortalInvoicePage';
 import MyProfilePage from '../portal/MyProfilePage';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-
 function App() {
   return (
     <ErrorBoundary>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <AuthProvider>
     <CartProvider>
       <BrowserRouter>
@@ -98,7 +94,6 @@ function App() {
       </BrowserRouter>
     </CartProvider>
     </AuthProvider>
-    </GoogleOAuthProvider>
     </ErrorBoundary>
   );
 }

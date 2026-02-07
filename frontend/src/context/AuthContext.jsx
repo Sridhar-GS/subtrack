@@ -1,7 +1,11 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth as firebaseAuth } from '../firebase';
 import api from '../api';
 
 const AuthContext = createContext(null);
+
+const googleProvider = new GoogleAuthProvider();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -35,8 +39,10 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
-  const googleLogin = async (credential) => {
-    const res = await api.post('/auth/google', { credential });
+  const googleLogin = async () => {
+    const result = await signInWithPopup(firebaseAuth, googleProvider);
+    const idToken = await result.user.getIdToken();
+    const res = await api.post('/auth/firebase', { token: idToken });
     localStorage.setItem('access_token', res.data.access_token);
     localStorage.setItem('refresh_token', res.data.refresh_token);
     setUser(res.data.user);

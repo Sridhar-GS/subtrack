@@ -3,17 +3,14 @@ import threading
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from jose import JWTError
-from google.oauth2 import id_token as google_id_token
-from google.auth.transport import requests as google_requests
 
-from app.config import settings
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.enums import UserRole
 from app.schemas.auth import (
     SignupRequest, LoginRequest, LoginResponse, RefreshRequest,
     TokenResponse, ForgotPasswordRequest, UserOut,
-    GoogleAuthRequest, FirebaseAuthRequest,
+    FirebaseAuthRequest,
 )
 from app.services.auth_service import (
     hash_password, verify_password, create_access_token,
@@ -91,7 +88,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/firebase", response_model=LoginResponse)
 def firebase_auth(data: FirebaseAuthRequest, db: Session = Depends(get_db)):
-    """Verify a Firebase ID token and find or create the user."""
+    """Verify a Firebase ID token (email/password or Google via Firebase) and find or create the user."""
     try:
         decoded = verify_firebase_token(data.token)
     except Exception:
@@ -120,54 +117,6 @@ def firebase_auth(data: FirebaseAuthRequest, db: Session = Depends(get_db)):
             phone=data.phone,
             company=data.company,
             oauth_provider=provider,
-            role=UserRole.PORTAL,
-            is_active=True,
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is deactivated")
-
-    token_data = {"sub": str(user.id), "role": user.role.value}
-    return LoginResponse(
-        access_token=create_access_token(token_data),
-        refresh_token=create_refresh_token(token_data),
-        user=UserOut.model_validate(user),
-    )
-
-
-@router.post("/google", response_model=LoginResponse)
-def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
-    """Verify a Google OAuth credential and find or create the user."""
-    try:
-        idinfo = google_id_token.verify_oauth2_token(
-            data.credential,
-            google_requests.Request(),
-            settings.GOOGLE_CLIENT_ID,
-        )
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid Google token")
-
-    email = idinfo.get("email")
-    if not email:
-        raise HTTPException(status_code=401, detail="Google account has no email")
-
-    name = idinfo.get("name", email.split("@")[0])
-
-    user = db.query(User).filter(User.email == email).first()
-
-    if user:
-        if not user.oauth_provider:
-            user.oauth_provider = "google"
-            db.commit()
-            db.refresh(user)
-    else:
-        user = User(
-            email=email,
-            full_name=name,
-            oauth_provider="google",
             role=UserRole.PORTAL,
             is_active=True,
         )
