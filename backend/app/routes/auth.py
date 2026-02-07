@@ -1,7 +1,12 @@
+import threading
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from jose import JWTError
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
+from app.config import settings
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.enums import UserRole
@@ -69,11 +74,12 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
-    # Sync password to Firebase Auth
-    try:
-        ensure_firebase_user_with_password(data.email, data.password)
-    except Exception:
-        pass  # Non-critical — don't block login
+    # Sync password to Firebase Auth in background (non-blocking)
+    threading.Thread(
+        target=ensure_firebase_user_with_password,
+        args=(data.email, data.password),
+        daemon=True,
+    ).start()
 
     token_data = {"sub": str(user.id), "role": user.role.value}
     return LoginResponse(
@@ -134,9 +140,50 @@ def firebase_auth(data: FirebaseAuthRequest, db: Session = Depends(get_db)):
 
 @router.post("/google", response_model=LoginResponse)
 def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
-    """Legacy Google OAuth endpoint — redirects logic to Firebase."""
-    firebase_data = FirebaseAuthRequest(token=data.credential)
-    return firebase_auth(firebase_data, db)
+    """Verify a Google OAuth credential and find or create the user."""
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            data.credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    email = idinfo.get("email")
+    if not email:
+        raise HTTPException(status_code=401, detail="Google account has no email")
+
+    name = idinfo.get("name", email.split("@")[0])
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if user:
+        if not user.oauth_provider:
+            user.oauth_provider = "google"
+            db.commit()
+            db.refresh(user)
+    else:
+        user = User(
+            email=email,
+            full_name=name,
+            oauth_provider="google",
+            role=UserRole.PORTAL,
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+
+    token_data = {"sub": str(user.id), "role": user.role.value}
+    return LoginResponse(
+        access_token=create_access_token(token_data),
+        refresh_token=create_refresh_token(token_data),
+        user=UserOut.model_validate(user),
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
