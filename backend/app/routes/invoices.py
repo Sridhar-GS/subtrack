@@ -70,3 +70,12 @@ def send_invoice(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.INTERNAL)),
 ):
     return invoice_service.send_invoice(db, invoice_id)
+
+
+@router.post("/{invoice_id}/back-to-draft", response_model=InvoiceOut)
+def back_to_draft(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    return invoice_service.back_to_draft(db, invoice_id)

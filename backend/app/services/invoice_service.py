@@ -121,3 +121,13 @@ def cancel_invoice(db: Session, invoice_id: int) -> Invoice:
 def send_invoice(db: Session, invoice_id: int) -> dict:
     invoice = get_invoice(db, invoice_id)
     return {"message": f"Invoice {invoice.invoice_number} marked as sent"}
+
+
+def back_to_draft(db: Session, invoice_id: int) -> Invoice:
+    invoice = get_invoice(db, invoice_id)
+    if invoice.status != InvoiceStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Only CANCELLED invoices can be set back to draft")
+    invoice.status = InvoiceStatus.DRAFT
+    db.commit()
+    db.refresh(invoice)
+    return invoice

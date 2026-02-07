@@ -7,6 +7,7 @@ from app.models.payment import Payment
 from app.models.quotation_template import QuotationTemplate, QuotationTemplateLine
 from app.models.discount import Discount
 from app.models.tax import Tax
+from app.models.cart import Cart, CartItem
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "QuotationTemplate", "QuotationTemplateLine",
     "Discount",
     "Tax",
+    "Cart", "CartItem",
 ]

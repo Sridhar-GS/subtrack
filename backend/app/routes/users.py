@@ -4,11 +4,46 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_db, get_current_user, require_role
 from app.models.user import User
 from app.enums import UserRole
-from app.schemas.user import UserCreate, UserUpdate, UserOut
-from app.services.auth_service import hash_password
+from app.schemas.user import UserCreate, UserUpdate, UserOut, ProfileUpdate, ChangePasswordRequest
+from app.services.auth_service import hash_password, verify_password
 from app.utils.password import validate_password
 
 router = APIRouter()
+
+
+@router.get("/me", response_model=UserOut)
+def get_my_profile(
+    current_user: User = Depends(get_current_user),
+):
+    return current_user
+
+
+@router.put("/me/profile", response_model=UserOut)
+def update_my_profile(
+    data: ProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.post("/me/change-password")
+def change_my_password(
+    data: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    validate_password(data.new_password)
+    current_user.hashed_password = hash_password(data.new_password)
+    db.commit()
+    return {"message": "Password changed successfully"}
 
 
 @router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED)

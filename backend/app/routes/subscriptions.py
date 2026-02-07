@@ -3,12 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_db, get_current_user, require_role
 from app.models.user import User
-from app.enums import UserRole
+from app.enums import UserRole, SubscriptionStatus
 from app.schemas.subscription import (
     SubscriptionCreate, SubscriptionUpdate, SubscriptionOut,
     SubscriptionLineCreate, SubscriptionLineUpdate, SubscriptionLineOut,
     StatusTransitionRequest,
 )
+from app.models.recurring_plan import RecurringPlan
 from app.services import subscription_service
 
 router = APIRouter()
@@ -109,3 +110,38 @@ def transition_status(
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.INTERNAL)),
 ):
     return subscription_service.transition_status(db, sub_id, data.action)
+
+
+@router.post("/{sub_id}/portal-close", response_model=SubscriptionOut)
+def portal_close_subscription(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sub = subscription_service.get_subscription(db, sub_id)
+    if sub.customer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your subscription")
+    plan = db.query(RecurringPlan).filter(RecurringPlan.id == sub.plan_id).first()
+    if plan and not plan.closable:
+        raise HTTPException(status_code=400, detail="This plan does not allow closing")
+    return subscription_service.transition_status(db, sub_id, "close")
+
+
+@router.post("/{sub_id}/portal-renew", response_model=SubscriptionOut)
+def portal_renew_subscription(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sub = subscription_service.get_subscription(db, sub_id)
+    if sub.customer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your subscription")
+    plan = db.query(RecurringPlan).filter(RecurringPlan.id == sub.plan_id).first()
+    if plan and not plan.renewable:
+        raise HTTPException(status_code=400, detail="This plan does not allow renewal")
+    if sub.status != SubscriptionStatus.CLOSED:
+        raise HTTPException(status_code=400, detail="Only CLOSED subscriptions can be renewed")
+    sub.status = SubscriptionStatus.ACTIVE
+    db.commit()
+    db.refresh(sub)
+    return sub

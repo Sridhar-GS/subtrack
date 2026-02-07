@@ -28,11 +28,6 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
-
-
 class UserOut(BaseModel):
     id: int
     email: str
@@ -51,3 +46,14 @@ class LoginResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
+class FirebaseAuthRequest(BaseModel):
+    token: str
+    full_name: str | None = None
+    phone: str | None = None
+    company: str | None = None
