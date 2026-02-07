@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+alembic/versions/*.py
+!alembic/versions/.gitkeep
+.idea/
+.vscode/
+*.swp
+*.swo
