@@ -9,12 +9,15 @@ from app.schemas.discount import DiscountCreate, DiscountUpdate, DiscountOut
 from app.services import discount_service
 from pydantic import BaseModel
 from datetime import date
+from decimal import Decimal
 
 router = APIRouter()
 
 
 class ValidateDiscountRequest(BaseModel):
     code: str
+    subtotal: Decimal | None = None
+    quantity: int | None = None
 
 
 class ValidateDiscountResponse(BaseModel):
@@ -44,6 +47,10 @@ def validate_discount_code(
         return {"valid": False, "message": "Discount has expired"}
     if discount.limit_usage and discount.usage_count >= discount.limit_usage:
         return {"valid": False, "message": "Discount usage limit reached"}
+    if discount.min_purchase and data.subtotal and data.subtotal < discount.min_purchase:
+        return {"valid": False, "message": f"Minimum purchase of Rs. {discount.min_purchase} required"}
+    if discount.min_quantity and data.quantity and data.quantity < discount.min_quantity:
+        return {"valid": False, "message": f"Minimum quantity of {discount.min_quantity} required"}
     return {
         "valid": True,
         "discount_id": discount.id,

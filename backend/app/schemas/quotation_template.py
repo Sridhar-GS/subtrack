@@ -29,6 +29,7 @@ class QuotationTemplateUpdate(BaseModel):
     name: str | None = None
     validity_days: int | None = None
     recurring_plan_id: int | None = None
+    lines: list[QuotationTemplateLineCreate] | None = None
 
 
 class QuotationTemplateOut(BaseModel):

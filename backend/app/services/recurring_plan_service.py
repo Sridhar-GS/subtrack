@@ -13,7 +13,7 @@ def create_plan(db: Session, data: RecurringPlanCreate) -> RecurringPlan:
         min_quantity=data.min_quantity,
         start_date=data.start_date,
         end_date=data.end_date,
-        auto_close=data.auto_close,
+        auto_close_days=data.auto_close_days,
         closable=data.closable,
         pausable=data.pausable,
         renewable=data.renewable,

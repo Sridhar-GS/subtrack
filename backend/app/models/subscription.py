@@ -13,15 +13,20 @@ class Subscription(TimestampMixin, Base):
     subscription_number = Column(String(50), unique=True, nullable=False, index=True)
     customer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     plan_id = Column(Integer, ForeignKey("recurring_plans.id"), nullable=False)
+    salesperson_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=True)
     start_date = Column(Date, nullable=False)
     expiration_date = Column(Date, nullable=True)
     payment_terms = Column(String(255), nullable=True)
     status = Column(SAEnum(SubscriptionStatus), nullable=False,
                     default=SubscriptionStatus.DRAFT)
     notes = Column(Text, nullable=True)
+    next_invoice_date = Column(Date, nullable=True)
 
-    customer = relationship("User", backref="subscriptions")
+    customer = relationship("User", foreign_keys=[customer_id], backref="subscriptions")
+    salesperson = relationship("User", foreign_keys=[salesperson_id])
     plan = relationship("RecurringPlan", backref="subscriptions")
+    parent = relationship("Subscription", remote_side=[id], backref="children")
     lines = relationship("SubscriptionLine", back_populates="subscription",
                           cascade="all, delete-orphan")
     invoices = relationship("Invoice", back_populates="subscription")

@@ -102,13 +102,13 @@ export default function ReportsPage() {
     },
     {
       label: 'Revenue',
-      value: `$${Number(stats.revenue.total).toLocaleString()}`,
+      value: `₹${Number(stats.revenue.total).toLocaleString()}`,
       icon: HiOutlineCurrencyDollar,
       bg: '#059669',
     },
     {
       label: 'Total Payments',
-      value: `$${Number(stats.payments.total).toLocaleString()}`,
+      value: `₹${Number(stats.payments.total).toLocaleString()}`,
       icon: HiOutlineCreditCard,
       bg: '#2563EB',
     },
@@ -229,7 +229,7 @@ export default function ReportsPage() {
           </button>
         </div>
         <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>
-          ${Number(stats.revenue.total).toLocaleString()}
+          ₹{Number(stats.revenue.total).toLocaleString()}
         </div>
       </div>
 
@@ -251,7 +251,7 @@ export default function ReportsPage() {
                 {stats.payments.by_method.map((item, idx) => (
                   <tr key={idx}>
                     <td>{item.method || item.payment_method || '-'}</td>
-                    <td>${Number(item.total || item.total_amount || 0).toLocaleString()}</td>
+                    <td>₹{Number(item.total || item.total_amount || 0).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -260,7 +260,7 @@ export default function ReportsPage() {
         ) : (
           <div>
             <p style={{ fontSize: 14, color: '#374151' }}>
-              Total Payments: <strong>${Number(stats.payments.total).toLocaleString()}</strong>
+              Total Payments: <strong>₹{Number(stats.payments.total).toLocaleString()}</strong>
             </p>
             <p style={{ fontSize: 14, color: '#374151' }}>
               Payment Count: <strong>{stats.payments.count}</strong>
@@ -296,7 +296,7 @@ export default function ReportsPage() {
                   <tr key={inv.id || inv.invoice_number}>
                     <td>{inv.invoice_number || inv.id}</td>
                     <td>{inv.customer_id}</td>
-                    <td>${Number(inv.total || inv.total_amount || 0).toLocaleString()}</td>
+                    <td>₹{Number(inv.total || inv.total_amount || 0).toLocaleString()}</td>
                     <td>{inv.due_date || '-'}</td>
                   </tr>
                 ))

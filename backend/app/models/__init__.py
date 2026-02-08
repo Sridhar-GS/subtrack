@@ -8,6 +8,7 @@ from app.models.quotation_template import QuotationTemplate, QuotationTemplateLi
 from app.models.discount import Discount
 from app.models.tax import Tax
 from app.models.cart import Cart, CartItem
+from app.models.contact import Contact
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "Discount",
     "Tax",
     "Cart", "CartItem",
+    "Contact",
 ]

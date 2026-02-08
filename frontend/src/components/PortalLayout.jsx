@@ -15,6 +15,7 @@ export default function PortalLayout() {
 
   const handleLogout = () => {
     logout();
+    setShowDropdown(false);
     navigate('/login');
   };
 
@@ -26,6 +27,9 @@ export default function PortalLayout() {
           <nav className={styles.nav}>
             <NavLink to="/" end className={({ isActive }) => isActive ? `${styles.navLink} ${styles.active}` : styles.navLink}>Home</NavLink>
             <NavLink to="/shop" className={({ isActive }) => isActive ? `${styles.navLink} ${styles.active}` : styles.navLink}>Shop</NavLink>
+            {user && (
+              <NavLink to="/my-orders" className={({ isActive }) => isActive ? `${styles.navLink} ${styles.active}` : styles.navLink}>My Account</NavLink>
+            )}
           </nav>
           <div className={styles.actions}>
             <NavLink to="/cart" className={styles.cartBtn}>
@@ -35,16 +39,15 @@ export default function PortalLayout() {
             {user ? (
               <div className={styles.userMenu} onMouseLeave={() => setShowDropdown(false)}>
                 <button className={styles.userBtn} onClick={() => setShowDropdown(!showDropdown)}>
-                  <HiOutlineUser />
-                  <span>{user.full_name?.split(' ')[0] || 'Account'}</span>
+                  <span>My Profile</span>
                   <HiOutlineChevronDown />
                 </button>
                 {showDropdown && (
                   <div className={styles.dropdown}>
+                    <NavLink to="/my-profile" className={styles.dropdownItem} onClick={() => setShowDropdown(false)}>User Details</NavLink>
                     <NavLink to="/my-orders" className={styles.dropdownItem} onClick={() => setShowDropdown(false)}>My Orders</NavLink>
-                    <NavLink to="/my-profile" className={styles.dropdownItem} onClick={() => setShowDropdown(false)}>My Profile</NavLink>
                     <button className={styles.dropdownItem} onClick={handleLogout}>
-                      <HiOutlineLogout /> Logout
+                      Sign Out
                     </button>
                   </div>
                 )}

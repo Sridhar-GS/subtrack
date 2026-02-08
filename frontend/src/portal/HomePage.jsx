@@ -44,7 +44,7 @@ export default function HomePage() {
               <div className={styles.productInfo}>
                 <div className={styles.productName}>{product.name}</div>
                 <div className={styles.productType}>{product.product_type || 'Product'}</div>
-                <div className={styles.productPrice}>${Number(product.price || 0).toLocaleString()}</div>
+                <div className={styles.productPrice}>₹{Number(product.price || 0).toLocaleString()}</div>
                 {product.description && (
                   <div className={styles.productDesc}>{product.description}</div>
                 )}

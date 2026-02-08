@@ -10,7 +10,7 @@ class RecurringPlanCreate(BaseModel):
     min_quantity: int = 1
     start_date: date | None = None
     end_date: date | None = None
-    auto_close: bool = False
+    auto_close_days: int | None = None
     closable: bool = True
     pausable: bool = False
     renewable: bool = True
@@ -23,7 +23,7 @@ class RecurringPlanUpdate(BaseModel):
     min_quantity: int | None = None
     start_date: date | None = None
     end_date: date | None = None
-    auto_close: bool | None = None
+    auto_close_days: int | None = None
     closable: bool | None = None
     pausable: bool | None = None
     renewable: bool | None = None
@@ -37,7 +37,7 @@ class RecurringPlanOut(BaseModel):
     min_quantity: int
     start_date: date | None = None
     end_date: date | None = None
-    auto_close: bool
+    auto_close_days: int | None = None
     closable: bool
     pausable: bool
     renewable: bool

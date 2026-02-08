@@ -4,7 +4,7 @@ from app.routes import (
     auth, users, products, product_variants, recurring_plans,
     subscriptions, invoices, payments, discounts, taxes,
     quotation_templates, reports,
-    cart, checkout,
+    cart, checkout, contacts,
 )
 
 api_router = APIRouter(prefix="/api")
@@ -23,3 +23,4 @@ api_router.include_router(quotation_templates.router, prefix="/quotation-templat
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(cart.router, prefix="/cart", tags=["Cart"])
 api_router.include_router(checkout.router, prefix="/checkout", tags=["Checkout"])
+api_router.include_router(contacts.router, prefix="/contacts", tags=["Contacts"])

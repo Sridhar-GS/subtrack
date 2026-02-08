@@ -11,7 +11,6 @@ import LoginPage from '../pages/auth/LoginPage';
 import SignupPage from '../pages/auth/SignupPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 
-import DashboardPage from '../pages/DashboardPage';
 import ProductsPage from '../pages/ProductsPage';
 import PlansPage from '../pages/PlansPage';
 import SubscriptionsPage from '../pages/SubscriptionsPage';
@@ -67,17 +66,17 @@ function App() {
             </Route>
           </Route>
 
-          {/* Admin/Internal protected routes with sidebar layout */}
+          {/* Admin/Internal protected routes with top nav layout */}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/products" element={<ProductsPage />} />
-              <Route path="/plans" element={<PlansPage />} />
+              <Route path="/dashboard" element={<Navigate to="/subscriptions" replace />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
               <Route path="/subscriptions/new" element={<SubscriptionFormPage />} />
               <Route path="/subscriptions/:subId" element={<SubscriptionFormPage />} />
+              <Route path="/products" element={<ProductsPage />} />
               <Route path="/contacts" element={<ContactsPage />} />
               <Route path="/invoices" element={<InvoicesPage />} />
+              <Route path="/invoices/:invoiceId" element={<InvoicesPage />} />
               <Route path="/payments" element={<PaymentsPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/discounts" element={<DiscountsPage />} />
@@ -85,6 +84,7 @@ function App() {
               <Route path="/attributes" element={<AttributesPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/plans" element={<PlansPage />} />
             </Route>
           </Route>
 

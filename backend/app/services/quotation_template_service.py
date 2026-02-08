@@ -42,8 +42,29 @@ def get_template(db: Session, template_id: int) -> QuotationTemplate:
 def update_template(db: Session, template_id: int, data: QuotationTemplateUpdate) -> QuotationTemplate:
     template = get_template(db, template_id)
     update_data = data.model_dump(exclude_unset=True)
+
+    # Handle lines separately if provided
+    new_lines = update_data.pop("lines", None)
+
     for field, value in update_data.items():
         setattr(template, field, value)
+
+    # Replace lines if provided
+    if new_lines is not None:
+        # Delete existing lines
+        db.query(QuotationTemplateLine).filter(
+            QuotationTemplateLine.template_id == template.id
+        ).delete()
+        # Create new lines
+        for line_data in new_lines:
+            line = QuotationTemplateLine(
+                template_id=template.id,
+                product_id=line_data["product_id"],
+                quantity=line_data.get("quantity", 1),
+                unit_price=line_data.get("unit_price", 0),
+            )
+            db.add(line)
+
     db.commit()
     db.refresh(template)
     return template

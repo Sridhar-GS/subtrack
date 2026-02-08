@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  HiSearch,
   HiPlus,
-  HiPencil,
   HiTrash,
-  HiCheck,
-  HiX,
+  HiOutlinePrinter,
+  HiSearch,
+  HiArrowLeft,
+  HiOutlineClipboardList,
 } from 'react-icons/hi';
 import styles from './Page.module.css';
 import api from '../api';
@@ -13,11 +13,12 @@ import api from '../api';
 const EMPTY_FORM = {
   name: '',
   price: '',
-  billing_period: 'monthly',
+  billing_period_number: 1,
+  billing_period_unit: 'monthly',
   min_quantity: 1,
   start_date: '',
   end_date: '',
-  auto_close: false,
+  auto_close_days: '',
   closable: true,
   pausable: false,
   renewable: true,
@@ -30,39 +31,90 @@ const PERIOD_BADGE = {
   yearly: { background: '#F3E8FF', color: '#7C3AED' },
 };
 
+const PERIOD_LABELS = {
+  daily: 'Daily',
+  weekly: 'Weeks',
+  monthly: 'Month',
+  yearly: 'Year',
+};
+
 export default function PlansPage() {
   const [plans, setPlans] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [view, setView] = useState('list');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
+  const [planProducts, setPlanProducts] = useState([]);
 
-  const fetchPlans = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await api.get('/recurring-plans/');
-      setPlans(res.data);
+      const [plansRes, subsRes, productsRes] = await Promise.all([
+        api.get('/recurring-plans/'),
+        api.get('/subscriptions/'),
+        api.get('/products/'),
+      ]);
+      setPlans(plansRes.data);
+      setSubscriptions(subsRes.data);
+      setProducts(productsRes.data);
     } catch {
       /* ignore */
-    } finally {
-      setLoading(false);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  /* ---------- List helpers ---------- */
+
+  const filtered = plans.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const activeSubCount = (planId) =>
+    subscriptions.filter(
+      (s) => s.plan_id === planId && s.status === 'active',
+    ).length;
+
+  const toggleSelect = (id) => {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleAll = () => {
+    if (selected.length === filtered.length) setSelected([]);
+    else setSelected(filtered.map((p) => p.id));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selected.length === 0) return;
+    if (!window.confirm(`Delete ${selected.length} plan(s)?`)) return;
+    try {
+      await Promise.all(
+        selected.map((id) => api.delete(`/recurring-plans/${id}`)),
+      );
+      setSelected([]);
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to delete');
     }
   };
 
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  const filtered = plans.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  /* ---------- Form helpers ---------- */
 
   const openCreate = () => {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setPlanProducts([]);
     setError('');
-    setShowModal(true);
+    setView('form');
   };
 
   const openEdit = (plan) => {
@@ -70,21 +122,23 @@ export default function PlansPage() {
     setForm({
       name: plan.name,
       price: plan.price,
-      billing_period: plan.billing_period,
+      billing_period_number: 1,
+      billing_period_unit: plan.billing_period || 'monthly',
       min_quantity: plan.min_quantity,
       start_date: plan.start_date || '',
       end_date: plan.end_date || '',
-      auto_close: plan.auto_close,
+      auto_close_days: plan.auto_close_days ?? '',
       closable: plan.closable,
       pausable: plan.pausable,
       renewable: plan.renewable,
     });
+    setPlanProducts([]);
     setError('');
-    setShowModal(true);
+    setView('form');
   };
 
-  const closeModal = () => {
-    setShowModal(false);
+  const goBack = () => {
+    setView('list');
     setEditing(null);
     setError('');
   };
@@ -97,18 +151,23 @@ export default function PlansPage() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setError('');
+    if (!form.name.trim()) {
+      setError('Name is required');
+      return;
+    }
 
     const payload = {
       name: form.name,
-      price: parseFloat(form.price),
-      billing_period: form.billing_period,
-      min_quantity: parseInt(form.min_quantity, 10),
+      price: parseFloat(form.price) || 0,
+      billing_period: form.billing_period_unit,
+      min_quantity: parseInt(form.min_quantity, 10) || 1,
       start_date: form.start_date || null,
       end_date: form.end_date || null,
-      auto_close: form.auto_close,
+      auto_close_days: form.auto_close_days
+        ? parseInt(form.auto_close_days, 10)
+        : null,
       closable: form.closable,
       pausable: form.pausable,
       renewable: form.renewable,
@@ -120,29 +179,26 @@ export default function PlansPage() {
       } else {
         await api.post('/recurring-plans/', payload);
       }
-      closeModal();
-      fetchPlans();
+      goBack();
+      fetchData();
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred');
     }
   };
 
-  const handleDelete = async (plan) => {
-    if (!window.confirm(`Delete plan "${plan.name}"?`)) return;
+  const handleDeleteSingle = async () => {
+    if (!editing) return;
+    if (!window.confirm(`Delete plan "${editing.name}"?`)) return;
     try {
-      await api.delete(`/recurring-plans/${plan.id}`);
-      fetchPlans();
+      await api.delete(`/recurring-plans/${editing.id}`);
+      goBack();
+      fetchData();
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to delete plan');
     }
   };
 
-  const renderOptionIcon = (value) =>
-    value ? (
-      <HiCheck style={{ color: '#059669', fontSize: 18 }} />
-    ) : (
-      <HiX style={{ color: '#DC2626', fontSize: 18 }} />
-    );
+  /* ---------- Loading ---------- */
 
   if (loading) {
     return (
@@ -154,247 +210,336 @@ export default function PlansPage() {
     );
   }
 
+  /* ===================== LIST VIEW ===================== */
+
+  if (view === 'list') {
+    return (
+      <div className={styles.page}>
+        {/* Toolbar */}
+        <div className={styles.toolbar}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className={styles.btnPrimary} onClick={openCreate}>
+              <HiPlus /> New
+            </button>
+            <button
+              className={styles.btnSecondary}
+              onClick={handleBulkDelete}
+              disabled={selected.length === 0}
+              title="Delete selected"
+            >
+              <HiTrash />
+            </button>
+            <button
+              className={styles.btnSecondary}
+              onClick={() => window.print()}
+              title="Print"
+            >
+              <HiOutlinePrinter />
+            </button>
+          </div>
+          <div className={styles.searchBox}>
+            <HiSearch />
+            <input
+              type="text"
+              placeholder="Search plans..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className={styles.card}>
+          <div className={styles.tableWrapper}>
+            {filtered.length === 0 ? (
+              <div className={styles.empty}>
+                <p>No recurring plans found.</p>
+              </div>
+            ) : (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={{ width: 40 }}>
+                      <input
+                        type="checkbox"
+                        checked={
+                          selected.length === filtered.length &&
+                          filtered.length > 0
+                        }
+                        onChange={toggleAll}
+                        style={{ accentColor: '#714B67' }}
+                      />
+                    </th>
+                    <th>Plan Name</th>
+                    <th>Billing Period</th>
+                    <th>Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((plan) => {
+                    const badgeStyle =
+                      PERIOD_BADGE[plan.billing_period] || PERIOD_BADGE.monthly;
+                    return (
+                      <tr
+                        key={plan.id}
+                        onClick={() => openEdit(plan)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(plan.id)}
+                            onChange={() => toggleSelect(plan.id)}
+                            style={{ accentColor: '#714B67' }}
+                          />
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{plan.name}</td>
+                        <td>
+                          <span className={styles.badge} style={badgeStyle}>
+                            {plan.billing_period}
+                          </span>
+                        </td>
+                        <td>₹{parseFloat(plan.price).toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ===================== FORM VIEW ===================== */
+
+  const subCount = editing ? activeSubCount(editing.id) : 0;
+
   return (
     <div className={styles.page}>
       {/* Toolbar */}
       <div className={styles.toolbar}>
-        <div className={styles.searchBox}>
-          <HiSearch />
-          <input
-            type="text"
-            placeholder="Search plans..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <button className={styles.btnPrimary} onClick={openCreate}>
-          <HiPlus /> Add Plan
-        </button>
-      </div>
-
-      {/* Table */}
-      <div className={styles.card}>
-        <div className={styles.tableWrapper}>
-          {filtered.length === 0 ? (
-            <div className={styles.empty}>
-              <p>No recurring plans found.</p>
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Price ($)</th>
-                  <th>Billing Period</th>
-                  <th>Min Qty</th>
-                  <th>Start Date</th>
-                  <th>End Date</th>
-                  <th>Options</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((plan) => {
-                  const badgeStyle = PERIOD_BADGE[plan.billing_period] || PERIOD_BADGE.monthly;
-                  return (
-                    <tr key={plan.id}>
-                      <td>{plan.name}</td>
-                      <td>${parseFloat(plan.price).toFixed(2)}</td>
-                      <td>
-                        <span
-                          className={styles.badge}
-                          style={badgeStyle}
-                        >
-                          {plan.billing_period}
-                        </span>
-                      </td>
-                      <td>{plan.min_quantity}</td>
-                      <td>{plan.start_date || '\u2014'}</td>
-                      <td>{plan.end_date || '\u2014'}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <span title="Auto Close">{renderOptionIcon(plan.auto_close)}</span>
-                          <span title="Closable">{renderOptionIcon(plan.closable)}</span>
-                          <span title="Pausable">{renderOptionIcon(plan.pausable)}</span>
-                          <span title="Renewable">{renderOptionIcon(plan.renewable)}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className={styles.actions}>
-                          <button title="Edit" onClick={() => openEdit(plan)}>
-                            <HiPencil />
-                          </button>
-                          <button
-                            title="Delete"
-                            className={styles.actionsDanger}
-                            onClick={() => handleDelete(plan)}
-                          >
-                            <HiTrash />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            className={styles.btnSecondary}
+            onClick={goBack}
+            title="Back to list"
+          >
+            <HiArrowLeft />
+          </button>
+          <button className={styles.btnPrimary} onClick={openCreate}>
+            <HiPlus /> New
+          </button>
+          {editing && (
+            <>
+              <button
+                className={styles.btnDanger}
+                onClick={handleDeleteSingle}
+                title="Delete"
+              >
+                <HiTrash /> Delete
+              </button>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => window.print()}
+                title="Print"
+              >
+                <HiOutlinePrinter /> Print
+              </button>
+            </>
           )}
         </div>
+        {editing && (
+          <button
+            className={styles.btnSecondary}
+            title="Active subscriptions using this plan"
+            style={{ pointerEvents: 'none' }}
+          >
+            <HiOutlineClipboardList /> Subscriptions: {subCount}
+          </button>
+        )}
       </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className={styles.overlay} onClick={closeModal}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2>{editing ? 'Edit Plan' : 'Add Plan'}</h2>
-              <button className={styles.modalClose} onClick={closeModal}>
-                <HiX />
-              </button>
+      {/* Form card */}
+      <div className={styles.card}>
+        <div style={{ padding: 24 }}>
+          {/* Recurring Name as big editable heading */}
+          <div className={styles.formGroup}>
+            <input
+              className={styles.formControl}
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="Recurring Plan Name"
+              required
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                height: 'auto',
+                padding: '12px 16px',
+                border: '1px solid #E5E7EB',
+                borderRadius: 8,
+              }}
+            />
+          </div>
+
+          {/* Billing Period + Price row */}
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <label>Billing Period</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  className={styles.formControl}
+                  type="number"
+                  name="billing_period_number"
+                  value={form.billing_period_number}
+                  onChange={handleChange}
+                  min="1"
+                  style={{ width: 80, flex: 'none' }}
+                />
+                <select
+                  className={styles.formControl}
+                  name="billing_period_unit"
+                  value={form.billing_period_unit}
+                  onChange={handleChange}
+                >
+                  <option value="weekly">Weeks</option>
+                  <option value="monthly">Month</option>
+                  <option value="yearly">Year</option>
+                </select>
+              </div>
             </div>
+            <div className={styles.formGroup}>
+              <label>Price</label>
+              <input
+                className={styles.formControl}
+                type="number"
+                step="0.01"
+                name="price"
+                value={form.price}
+                onChange={handleChange}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className={styles.modalBody}>
-                <div className={styles.formGroup}>
-                  <label>Name</label>
-                  <input
-                    className={styles.formControl}
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label>Price</label>
-                    <input
-                      className={styles.formControl}
-                      type="number"
-                      step="0.01"
-                      name="price"
-                      value={form.price}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>Billing Period</label>
-                    <select
-                      className={styles.formControl}
-                      name="billing_period"
-                      value={form.billing_period}
-                      onChange={handleChange}
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Min Quantity</label>
-                  <input
-                    className={styles.formControl}
-                    type="number"
-                    name="min_quantity"
-                    value={form.min_quantity}
-                    onChange={handleChange}
-                    min="1"
-                  />
-                </div>
-
-                <div className={styles.formRow}>
-                  <div className={styles.formGroup}>
-                    <label>Start Date</label>
-                    <input
-                      className={styles.formControl}
-                      type="date"
-                      name="start_date"
-                      value={form.start_date}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>End Date</label>
-                    <input
-                      className={styles.formControl}
-                      type="date"
-                      name="end_date"
-                      value={form.end_date}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 20,
-                    marginTop: 8,
-                  }}
-                >
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      name="auto_close"
-                      checked={form.auto_close}
-                      onChange={handleChange}
-                    />
-                    Auto Close
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      name="closable"
-                      checked={form.closable}
-                      onChange={handleChange}
-                    />
-                    Closable
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      name="pausable"
-                      checked={form.pausable}
-                      onChange={handleChange}
-                    />
-                    Pausable
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      name="renewable"
-                      checked={form.renewable}
-                      onChange={handleChange}
-                    />
-                    Renewable
-                  </label>
-                </div>
-
-                {error && <div className={styles.formError}>{error}</div>}
+          {/* Automatic close + checkboxes row */}
+          <div className={styles.formRow}>
+            <div className={styles.formGroup}>
+              <label>Automatic Close</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  className={styles.formControl}
+                  type="number"
+                  name="auto_close_days"
+                  value={form.auto_close_days}
+                  onChange={handleChange}
+                  min="0"
+                  placeholder="--"
+                  style={{ width: 100, flex: 'none' }}
+                />
+                <span style={{ color: '#6B7280', fontSize: 14 }}>Days</span>
               </div>
-
-              <div className={styles.modalFooter}>
-                <button
-                  type="button"
-                  className={styles.btnSecondary}
-                  onClick={closeModal}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className={styles.btnPrimary}>
-                  {editing ? 'Save Changes' : 'Create Plan'}
-                </button>
+            </div>
+            <div className={styles.formGroup}>
+              <label>&nbsp;</label>
+              <div style={{ display: 'flex', gap: 20, paddingTop: 8 }}>
+                <label className={styles.checkbox}>
+                  <input
+                    type="checkbox"
+                    name="closable"
+                    checked={form.closable}
+                    onChange={handleChange}
+                  />
+                  Closable
+                </label>
+                <label className={styles.checkbox}>
+                  <input
+                    type="checkbox"
+                    name="pausable"
+                    checked={form.pausable}
+                    onChange={handleChange}
+                  />
+                  Pausable
+                </label>
+                <label className={styles.checkbox}>
+                  <input
+                    type="checkbox"
+                    name="renewable"
+                    checked={form.renewable}
+                    onChange={handleChange}
+                  />
+                  Renew
+                </label>
               </div>
-            </form>
+            </div>
+          </div>
+
+          {error && <div className={styles.formError}>{error}</div>}
+
+          {/* Save / Discard buttons */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button className={styles.btnPrimary} onClick={handleSave}>
+              {editing ? 'Save' : 'Create'}
+            </button>
+            <button className={styles.btnSecondary} onClick={goBack}>
+              Discard
+            </button>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Products table */}
+      <div className={styles.card} style={{ marginTop: 16 }}>
+        <div
+          style={{
+            padding: '16px 24px',
+            borderBottom: '1px solid #E5E7EB',
+          }}
+        >
+          <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+            Products
+          </h3>
+        </div>
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Variant</th>
+                <th>Price</th>
+                <th>Min Qty</th>
+              </tr>
+            </thead>
+            <tbody>
+              {planProducts.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    style={{
+                      textAlign: 'center',
+                      color: '#9CA3AF',
+                      padding: 24,
+                    }}
+                  >
+                    No products added to this plan yet.
+                  </td>
+                </tr>
+              ) : (
+                planProducts.map((pp, idx) => (
+                  <tr key={idx}>
+                    <td>{pp.product}</td>
+                    <td>{pp.variant || '\u2014'}</td>
+                    <td>₹{parseFloat(pp.price).toFixed(2)}</td>
+                    <td>{pp.min_qty}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

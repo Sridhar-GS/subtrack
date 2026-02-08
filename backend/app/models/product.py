@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, Enum as SAEnum, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -15,6 +15,11 @@ class Product(TimestampMixin, Base):
     sales_price = Column(Numeric(12, 2), nullable=False, default=0)
     cost_price = Column(Numeric(12, 2), nullable=False, default=0)
     description = Column(String(1000), nullable=True)
+    terms_and_conditions = Column(Text, nullable=True)
+    guarantee_period = Column(String(100), nullable=True)
+    shipping_info = Column(Text, nullable=True)
+    category = Column(String(100), nullable=True)
+    image_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True)
 
     variants = relationship("ProductVariant", back_populates="product",

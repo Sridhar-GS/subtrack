@@ -34,6 +34,7 @@ class SubscriptionLineOut(BaseModel):
 class SubscriptionCreate(BaseModel):
     customer_id: int
     plan_id: int
+    salesperson_id: int | None = None
     start_date: date
     expiration_date: date | None = None
     payment_terms: str | None = None
@@ -43,6 +44,7 @@ class SubscriptionCreate(BaseModel):
 
 class SubscriptionUpdate(BaseModel):
     plan_id: int | None = None
+    salesperson_id: int | None = None
     start_date: date | None = None
     expiration_date: date | None = None
     payment_terms: str | None = None
@@ -54,11 +56,14 @@ class SubscriptionOut(BaseModel):
     subscription_number: str
     customer_id: int
     plan_id: int
+    salesperson_id: int | None = None
+    parent_id: int | None = None
     start_date: date
     expiration_date: date | None = None
     payment_terms: str | None = None
     status: str
     notes: str | None = None
+    next_invoice_date: date | None = None
     lines: list[SubscriptionLineOut] = []
 
     class Config:

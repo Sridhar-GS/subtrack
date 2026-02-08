@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db, get_current_user, require_role
@@ -8,6 +11,10 @@ from app.models.recurring_plan import RecurringPlan
 from app.enums import UserRole
 from app.schemas.product import ProductCreate, ProductUpdate, ProductOut
 from app.services import product_service
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "products")
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 router = APIRouter()
 
@@ -85,3 +92,60 @@ def delete_product(
 ):
     product_service.delete_product(db, product_id)
     return {"message": "Product deactivated"}
+
+
+@router.post("/{product_id}/image", response_model=ProductOut)
+async def upload_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    product = product_service.get_product(db, product_id)
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Use: {', '.join(ALLOWED_EXTENSIONS)}")
+
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum 5MB.")
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    # Remove old image if exists
+    if product.image_url:
+        old_abs = os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), product.image_url.lstrip("/")))
+        if os.path.exists(old_abs):
+            os.remove(old_abs)
+
+    filename = f"{product_id}_{uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    product.image_url = f"uploads/products/{filename}"
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.delete("/{product_id}/image", response_model=ProductOut)
+def delete_product_image(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    product = product_service.get_product(db, product_id)
+    if not product.image_url:
+        raise HTTPException(status_code=400, detail="Product has no image")
+
+    abs_path = os.path.normpath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), product.image_url.lstrip("/")))
+    if os.path.exists(abs_path):
+        os.remove(abs_path)
+
+    product.image_url = None
+    db.commit()
+    db.refresh(product)
+    return product

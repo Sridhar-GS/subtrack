@@ -145,7 +145,7 @@ export default function PaymentsPage() {
                 <th>Payment ID</th>
                 <th>Invoice #</th>
                 <th>Method</th>
-                <th>Amount ($)</th>
+                <th>Amount (₹)</th>
                 <th>Date</th>
                 <th>Actions</th>
               </tr>
@@ -163,7 +163,7 @@ export default function PaymentsPage() {
                     <td>{p.id}</td>
                     <td>{getInvoiceNumber(p.invoice_id)}</td>
                     <td style={{ textTransform: 'capitalize' }}>{(p.payment_method || '').replace('_', ' ')}</td>
-                    <td>${Number(p.amount).toFixed(2)}</td>
+                    <td>₹{Number(p.amount).toFixed(2)}</td>
                     <td>{p.payment_date}</td>
                     <td>
                       <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
@@ -201,7 +201,7 @@ export default function PaymentsPage() {
                   <option value="">Select an invoice...</option>
                   {confirmedInvoices.map((inv) => (
                     <option key={inv.id} value={inv.id}>
-                      {inv.invoice_number} - ${Number(inv.total).toFixed(2)}
+                      {inv.invoice_number} - ₹{Number(inv.total).toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -312,7 +312,7 @@ export default function PaymentsPage() {
                 <div>
                   <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 600 }}>Amount</span>
                   <div style={{ fontSize: '14px', color: '#374151', fontWeight: 600 }}>
-                    ${Number(selectedPayment.amount).toFixed(2)}
+                    ₹{Number(selectedPayment.amount).toFixed(2)}
                   </div>
                 </div>
                 <div>

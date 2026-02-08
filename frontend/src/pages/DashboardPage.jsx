@@ -76,7 +76,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Revenue',
-      value: `$${Number(totalRevenue).toLocaleString()}`,
+      value: `₹${Number(totalRevenue).toLocaleString()}`,
       icon: HiOutlineCurrencyDollar,
       bg: '#059669',
     },
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                   overdueInvoices.slice(0, 5).map((inv) => (
                     <tr key={inv.id || inv.invoice_number}>
                       <td>{inv.invoice_number || inv.id}</td>
-                      <td>${Number(inv.amount || inv.total_amount || 0).toLocaleString()}</td>
+                      <td>₹{Number(inv.amount || inv.total_amount || 0).toLocaleString()}</td>
                       <td>{inv.due_date || '-'}</td>
                     </tr>
                   ))

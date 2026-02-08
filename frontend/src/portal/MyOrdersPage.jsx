@@ -15,18 +15,11 @@ export default function MyOrdersPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const getBadgeClass = (status) => {
-    if (status === 'active') return styles.badgeActive;
-    if (status === 'closed') return styles.badgeClosed;
-    if (status === 'confirmed') return styles.badgeConfirmed;
-    return styles.badgeDraft;
-  };
-
   if (loading) return <div className={styles.empty}><p>Loading...</p></div>;
 
   return (
     <div>
-      <h2 className={styles.sectionTitle}>My Orders</h2>
+      <h2 className={styles.sectionTitle}>Order</h2>
       {orders.length === 0 ? (
         <div className={styles.empty}>
           <h3>No orders yet</h3>
@@ -37,19 +30,19 @@ export default function MyOrdersPage() {
           <table>
             <thead>
               <tr>
-                <th>Order #</th>
-                <th>Status</th>
-                <th>Start Date</th>
-                <th>Plan</th>
+                <th>Order</th>
+                <th>Order Date</th>
+                <th>Total</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id} onClick={() => navigate(`/my-orders/${order.id}`)}>
-                  <td style={{ fontWeight: 600 }}>{order.subscription_number}</td>
-                  <td><span className={`${styles.badge} ${getBadgeClass(order.status)}`}>{order.status}</span></td>
+                  <td style={{ fontWeight: 600, color: '#714B67' }}>{order.subscription_number}</td>
                   <td>{order.start_date || '-'}</td>
-                  <td>{order.plan_id}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    ₹{order.lines ? order.lines.reduce((sum, l) => sum + Number(l.amount || 0), 0).toFixed(0) : '-'}
+                  </td>
                 </tr>
               ))}
             </tbody>

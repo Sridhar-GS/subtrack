@@ -1,191 +1,124 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  HiOutlineViewGrid,
-  HiOutlineCube,
   HiOutlineRefresh,
-  HiOutlineClipboardList,
-  HiOutlineDocumentText,
-  HiOutlineCreditCard,
-  HiOutlineTemplate,
-  HiOutlineTag,
-  HiOutlineCalculator,
-  HiOutlineUsers,
-  HiOutlineChartBar,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
   HiOutlineLogout,
-  HiOutlineUserGroup,
-  HiOutlineColorSwatch,
+  HiOutlineChevronDown,
+  HiOutlineUser,
 } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import styles from './Layout.module.css';
 
-const navGroups = [
-  {
-    label: 'MAIN',
-    items: [
-      { to: '/dashboard', icon: HiOutlineViewGrid, text: 'Dashboard' },
-    ],
-  },
-  {
-    label: 'MANAGEMENT',
-    items: [
-      { to: '/products', icon: HiOutlineCube, text: 'Products' },
-      { to: '/plans', icon: HiOutlineRefresh, text: 'Recurring Plans' },
-      { to: '/subscriptions', icon: HiOutlineClipboardList, text: 'Subscriptions' },
-      { to: '/contacts', icon: HiOutlineUserGroup, text: 'Contacts' },
-    ],
-  },
-  {
-    label: 'BILLING',
-    items: [
-      { to: '/invoices', icon: HiOutlineDocumentText, text: 'Invoices' },
-      { to: '/payments', icon: HiOutlineCreditCard, text: 'Payments' },
-    ],
-  },
-  {
-    label: 'CONFIGURATION',
-    items: [
-      { to: '/templates', icon: HiOutlineTemplate, text: 'Quotation Templates' },
-      { to: '/discounts', icon: HiOutlineTag, text: 'Discounts' },
-      { to: '/taxes', icon: HiOutlineCalculator, text: 'Taxes' },
-      { to: '/attributes', icon: HiOutlineColorSwatch, text: 'Attributes' },
-    ],
-  },
-  {
-    label: 'ADMINISTRATION',
-    items: [
-      { to: '/users', icon: HiOutlineUsers, text: 'Users', roles: ['admin', 'internal'] },
-      { to: '/reports', icon: HiOutlineChartBar, text: 'Reports', roles: ['admin', 'internal'] },
-    ],
-  },
+const configItems = [
+  { to: '/attributes', text: 'Attributes' },
+  { to: '/plans', text: 'Recurring Plan' },
+  { to: '/templates', text: 'Quotation Template' },
+  { to: '/payments', text: 'Payment Term' },
+  { to: '/discounts', text: 'Discount' },
+  { to: '/taxes', text: 'Taxes' },
 ];
 
-const pageTitles = {
-  '/dashboard': 'Dashboard',
-  '/products': 'Products',
-  '/plans': 'Recurring Plans',
-  '/subscriptions': 'Subscriptions',
-  '/contacts': 'Contacts',
-  '/invoices': 'Invoices',
-  '/payments': 'Payments',
-  '/templates': 'Quotation Templates',
-  '/discounts': 'Discounts',
-  '/taxes': 'Taxes',
-  '/attributes': 'Attributes',
-  '/users': 'Users',
-  '/reports': 'Reports',
-};
-
 export default function Layout() {
-  const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [configOpen, setConfigOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const configRef = useRef(null);
+  const profileRef = useRef(null);
 
-  const pageTitle = pageTitles[location.pathname] || 'Dashboard';
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (configRef.current && !configRef.current.contains(e.target)) setConfigOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
-  const sidebarClass = [
-    styles.sidebar,
-    collapsed ? styles.sidebarCollapsed : styles.sidebarOpen,
-  ].join(' ');
+  // Close dropdowns on route change
+  useEffect(() => {
+    setConfigOpen(false);
+    setProfileOpen(false);
+  }, [location.pathname]);
 
-  const mainClass = [
-    styles.main,
-    collapsed ? styles.mainShifted : '',
-  ].join(' ');
+  const isConfigActive = configItems.some((item) => location.pathname.startsWith(item.to));
 
   return (
     <div className={styles.layout}>
-      {/* Mobile overlay */}
-      <div
-        className={`${styles.overlay} ${collapsed ? styles.overlayHidden : ''}`}
-        onClick={() => setCollapsed(true)}
-      />
+      {/* Top Navigation Bar */}
+      <header className={styles.topNav}>
+        <div className={styles.topNavInner}>
+          {/* Logo */}
+          <NavLink to="/subscriptions" className={styles.logo}>
+            <HiOutlineRefresh className={styles.logoIcon} />
+            <span className={styles.logoText}>SubTrack</span>
+          </NavLink>
 
-      {/* Sidebar */}
-      <aside className={sidebarClass}>
-        <div className={styles.sidebarHeader}>
-          <span className={styles.logoIcon}>
-            <HiOutlineRefresh />
-          </span>
-          {!collapsed && <span className={styles.logoText}>SubTrack</span>}
-        </div>
+          {/* Main Nav */}
+          <nav className={styles.mainNav}>
+            <NavLink to="/subscriptions" className={({ isActive }) => `${styles.navLink} ${isActive || location.pathname.startsWith('/subscriptions') ? styles.navLinkActive : ''}`}>
+              Subscriptions
+            </NavLink>
+            <NavLink to="/products" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
+              Products
+            </NavLink>
+            <NavLink to="/reports" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
+              Reporting
+            </NavLink>
+            <NavLink to="/users" className={({ isActive }) => `${styles.navLink} ${isActive || location.pathname === '/contacts' ? styles.navLinkActive : ''}`}>
+              Users/Contacts
+            </NavLink>
 
-        <nav className={styles.nav}>
-          {navGroups.map((group) => {
-            const visibleItems = group.items.filter((item) => {
-              if (!item.roles) return true;
-              return user && item.roles.includes(user.role);
-            });
-
-            if (visibleItems.length === 0) return null;
-
-            return (
-              <div key={group.label}>
-                <div
-                  className={
-                    collapsed
-                      ? styles.navGroupLabelHidden
-                      : styles.navGroupLabel
-                  }
-                >
-                  {group.label}
-                </div>
-                {visibleItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className={({ isActive }) =>
-                        `${styles.navItem} ${isActive ? styles.active : ''}`
-                      }
-                      title={collapsed ? item.text : undefined}
-                    >
-                      <span className={styles.navItemIcon}>
-                        <Icon />
-                      </span>
-                      {!collapsed && (
-                        <span className={styles.navItemText}>{item.text}</span>
-                      )}
+            {/* Configuration Dropdown */}
+            <div className={styles.dropdownWrap} ref={configRef}>
+              <button
+                className={`${styles.navLink} ${isConfigActive ? styles.navLinkActive : ''}`}
+                onClick={() => setConfigOpen((v) => !v)}
+              >
+                Configuration <HiOutlineChevronDown style={{ fontSize: 14, marginLeft: 4 }} />
+              </button>
+              {configOpen && (
+                <div className={styles.dropdown}>
+                  {configItems.map((item) => (
+                    <NavLink key={item.to} to={item.to} className={styles.dropdownItem}>
+                      {item.text}
                     </NavLink>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </nav>
+                  ))}
+                </div>
+              )}
+            </div>
+          </nav>
 
-        <button
-          className={styles.toggleBtn}
-          onClick={() => setCollapsed((prev) => !prev)}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <HiOutlineChevronRight /> : <HiOutlineChevronLeft />}
-        </button>
-      </aside>
+          {/* Right: Profile */}
+          <div className={styles.navRight}>
+            <div className={styles.dropdownWrap} ref={profileRef}>
+              <button className={styles.profileBtn} onClick={() => setProfileOpen((v) => !v)}>
+                <HiOutlineUser />
+                <span>My Profile</span>
+                <HiOutlineChevronDown style={{ fontSize: 12 }} />
+              </button>
+              {profileOpen && (
+                <div className={`${styles.dropdown} ${styles.dropdownRight}`}>
+                  <div className={styles.dropdownHeader}>
+                    <div className={styles.dropdownUserName}>{user?.full_name || user?.email || 'User'}</div>
+                    <div className={styles.dropdownRole}>{user?.role || 'user'}</div>
+                  </div>
+                  <button className={styles.dropdownItem} onClick={() => { logout(); navigate('/login'); }}>
+                    <HiOutlineLogout style={{ marginRight: 8 }} /> Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* Main Content */}
-      <div className={mainClass}>
-        <header className={styles.topBar}>
-          <h1 className={styles.pageTitle}>{pageTitle}</h1>
-          <div className={styles.userMenu}>
-            <span className={styles.userName}>
-              {user?.full_name || user?.email || 'User'}
-            </span>
-            <span className={styles.roleBadge}>{user?.role || 'user'}</span>
-            <button className={styles.logoutBtn} onClick={logout}>
-              <HiOutlineLogout />
-              Logout
-            </button>
-          </div>
-        </header>
-
-        <main className={styles.pageContent}>
-          <Outlet />
-        </main>
-      </div>
+      <main className={styles.pageContent}>
+        <Outlet />
+      </main>
     </div>
   );
 }

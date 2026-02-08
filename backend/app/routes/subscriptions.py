@@ -136,12 +136,34 @@ def portal_renew_subscription(
     sub = subscription_service.get_subscription(db, sub_id)
     if sub.customer_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your subscription")
-    plan = db.query(RecurringPlan).filter(RecurringPlan.id == sub.plan_id).first()
-    if plan and not plan.renewable:
-        raise HTTPException(status_code=400, detail="This plan does not allow renewal")
-    if sub.status != SubscriptionStatus.CLOSED:
-        raise HTTPException(status_code=400, detail="Only CLOSED subscriptions can be renewed")
-    sub.status = SubscriptionStatus.ACTIVE
-    db.commit()
-    db.refresh(sub)
-    return sub
+    return subscription_service.renew_subscription(db, sub_id)
+
+
+@router.post("/{sub_id}/renew", response_model=SubscriptionOut)
+def renew_subscription(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.INTERNAL)),
+):
+    return subscription_service.renew_subscription(db, sub_id)
+
+
+@router.post("/{sub_id}/upsell", response_model=SubscriptionOut)
+def upsell_subscription(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.INTERNAL)),
+):
+    return subscription_service.upsell_subscription(db, sub_id)
+
+
+@router.get("/{sub_id}/history", response_model=list[SubscriptionOut])
+def get_subscription_history(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    sub = subscription_service.get_subscription(db, sub_id)
+    if current_user.role == UserRole.PORTAL and sub.customer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    return subscription_service.get_subscription_history(db, sub_id)

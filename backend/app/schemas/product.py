@@ -6,8 +6,12 @@ class ProductCreate(BaseModel):
     name: str
     product_type: str = "service"
     sales_price: Decimal
-    cost_price: Decimal
+    cost_price: Decimal = Decimal("0.00")
     description: str | None = None
+    terms_and_conditions: str | None = None
+    guarantee_period: str | None = None
+    shipping_info: str | None = None
+    category: str | None = None
 
 
 class ProductUpdate(BaseModel):
@@ -16,6 +20,10 @@ class ProductUpdate(BaseModel):
     sales_price: Decimal | None = None
     cost_price: Decimal | None = None
     description: str | None = None
+    terms_and_conditions: str | None = None
+    guarantee_period: str | None = None
+    shipping_info: str | None = None
+    category: str | None = None
 
 
 class VariantCreate(BaseModel):
@@ -48,6 +56,11 @@ class ProductOut(BaseModel):
     sales_price: Decimal
     cost_price: Decimal
     description: str | None = None
+    terms_and_conditions: str | None = None
+    guarantee_period: str | None = None
+    shipping_info: str | None = None
+    category: str | None = None
+    image_url: str | None = None
     is_active: bool
     variants: list[VariantOut] = []
 

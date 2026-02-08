@@ -15,7 +15,7 @@ class RecurringPlan(TimestampMixin, Base):
     min_quantity = Column(Integer, nullable=False, default=1)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
-    auto_close = Column(Boolean, default=False)
+    auto_close_days = Column(Integer, nullable=True)
     closable = Column(Boolean, default=True)
     pausable = Column(Boolean, default=False)
     renewable = Column(Boolean, default=True)
